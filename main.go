@@ -16,7 +16,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	// load template
-	err := homeView.Template.Execute(w, nil)
+	err := homeView.Template.ExecuteTemplate(w, homeView.Layout, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -26,7 +26,7 @@ func contact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	// load template
-	err := contactView.Template.Execute(w, nil)
+	err := contactView.Template.ExecuteTemplate(w, contactView.Layout,nil)
 	if err != nil {
 		panic(err)
 	}
@@ -38,8 +38,8 @@ func error404(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	homeView = views.NewView("views/home.gohtml")
-	contactView = views.NewView("views/contact.gohtml")
+	homeView = views.NewView("base", "views/home.gohtml")
+	contactView = views.NewView("base", "views/contact.gohtml")
 
 	// custom 404 handler
 	var handler404 http.Handler = http.HandlerFunc(error404)
