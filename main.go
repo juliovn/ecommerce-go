@@ -33,7 +33,9 @@ func main() {
 	r.HandleFunc("/signup", usersController.New).Methods("GET")
 	r.HandleFunc("/signup", usersController.Create).Methods("POST")
 
-
+	// 404
 	r.NotFoundHandler = staticController.Error404View
+
+	// Server start
 	http.ListenAndServe(":3000", r)
 }
