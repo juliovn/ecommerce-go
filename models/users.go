@@ -4,9 +4,13 @@ import (
 	"errors"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
+	// password pepper string
+	userPwPepper = "6J53aQog5tQPaJPT"
+
 	// ErrNotFound is returned when a resouece cannot be found in the database
 	ErrNotFound = errors.New("models: resource not found")
 
@@ -20,8 +24,10 @@ type UserService struct {
 
 type User struct {
 	gorm.Model
-	Name	string
-	Email	string `gorm:"not null;unique_index"`
+	Name			string
+	Email			string `gorm:"not null;unique_index"`
+	Password		string `gorm:"-"`
+	PasswordHash	string `gorm:"not null"`
 }
 
 func NewUserService(connectionInfo string) (*UserService, error) {
@@ -69,6 +75,13 @@ func (us *UserService) Update(user *User) error {
 
 // Create will create the provided user and backfill data like the ID, CreatedAt, UpdatedAt fields
 func (us *UserService) Create(user *User) error {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(user.Password + userPwPepper), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	user.PasswordHash = string(hashedBytes)
+	user.Password = ""
 	return us.db.Create(user).Error
 }
 

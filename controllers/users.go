@@ -1,19 +1,22 @@
 package controllers
 
 import (
+	"ecommerce/models"
 	"ecommerce/views"
 	"fmt"
 	"net/http"
 )
 
-func NewUsers() *Users {
+func NewUsers(us *models.UserService) *Users {
 	return &Users{
 		NewView: views.NewView("base", "users/new"),
+		us:		 us,
 	}
 }
 
 type Users struct {
 	NewView *views.View
+	us		*models.UserService
 }
 
 type SignupForm struct {
@@ -37,7 +40,16 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	fmt.Fprintln(w, "Name is", form.Name)
-	fmt.Fprintln(w, "Email is", form.Email)
-	fmt.Fprintln(w, "Password is", form.Password)
+	user := models.User{
+		Name: form.Name,
+		Email: form.Email,
+		Password: form.Password,
+	}
+
+	if err := u.us.Create(&user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "User is", user)
 }
