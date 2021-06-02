@@ -55,6 +55,10 @@ func main() {
 	r.HandleFunc("/signup", usersController.New).Methods("GET")
 	r.HandleFunc("/signup", usersController.Create).Methods("POST")
 
+	// LOGIN
+	r.Handle("/login", usersController.LoginView).Methods("GET")
+	r.HandleFunc("/login", usersController.Login).Methods("POST")
+
 	// 404
 	r.NotFoundHandler = staticController.Error404View
 
