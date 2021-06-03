@@ -59,6 +59,9 @@ func main() {
 	r.Handle("/login", usersController.LoginView).Methods("GET")
 	r.HandleFunc("/login", usersController.Login).Methods("POST")
 
+	// COOKIE TEST
+	r.HandleFunc("/cookietest", usersController.CookieTest).Methods("GET")
+
 	// 404
 	r.NotFoundHandler = staticController.Error404View
 
