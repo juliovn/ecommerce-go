@@ -2,12 +2,13 @@ package controllers
 
 import (
 	"ecommerce/models"
+	"ecommerce/rand"
 	"ecommerce/views"
 	"fmt"
 	"net/http"
 )
 
-func NewUsers(us *models.UserService) *Users {
+func NewUsers(us models.UserService) *Users {
 	return &Users{
 		NewView: views.NewView("base", "users/new"),
 		LoginView: views.NewView("base", "users/login"),
@@ -18,7 +19,7 @@ func NewUsers(us *models.UserService) *Users {
 type Users struct {
 	NewView 	*views.View
 	LoginView	*views.View
-	us			*models.UserService
+	us			models.UserService
 }
 
 type SignupForm struct {
@@ -58,7 +59,13 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintln(w, "User is", user)
+	err := u.signIn(w, &user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/cookietest", http.StatusFound)
 }
 
 // Login is used to process the login form and will attempt to log in a user
@@ -84,22 +91,53 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie := http.Cookie{
-		Name: "user",
-		Value: user.Email,
-	}
-
-	http.SetCookie(w, &cookie)
-	fmt.Fprintln(w, user)
-}
-
-// CookieTest is used to display cookies set on the current user
-func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("user")
+	err = u.signIn(w, user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprintln(w, "User is:", cookie.Value)
+	http.Redirect(w, r, "/cookietest", http.StatusFound)
+}
+
+// CookieTest is used to display cookies set on the current user
+func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("remember_token")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	user, err := u.us.ByRemember(cookie.Value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, user)
+}
+
+// signIn is used to sign the given user in via cookies
+func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
+	if user.Remember == "" {
+		token, err := rand.RememberToken()
+		if err != nil {
+			return err
+		}
+
+		user.Remember = token
+		err = u.us.Update(user)
+		if err != nil {
+			return err
+		}
+	}
+
+	cookie := http.Cookie{
+		Name: 		"remember_token",
+		Value: 		user.Remember,
+		HttpOnly: 	true,
+	}
+
+	http.SetCookie(w, &cookie)
+	return nil
 }
