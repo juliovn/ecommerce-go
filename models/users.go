@@ -9,12 +9,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const hmacSecretKey = "6hMXiDnQoH8Ec7KQ"
+const (
+	hmacSecretKey = "6hMXiDnQoH8Ec7KQ"
+	userPwPepper = "6J53aQog5tQPaJPT"
+)
 
 var (
-	// password pepper string
-	userPwPepper = "6J53aQog5tQPaJPT"
-
 	// ErrNotFound is returned when a resouece cannot be found in the database
 	ErrNotFound = errors.New("models: resource not found")
 
@@ -24,32 +24,6 @@ var (
 	// ErrInvalidPassword is returned when an invalid password is used when attempting to authenticate a user
 	ErrInvalidPassword = errors.New("models: incorrect password provided")
 )
-
-type userGorm struct {
-	db 		*gorm.DB
-	hmac 	hash.HMAC
-}
-
-var _ UserDB = &userGorm{}
-var _ UserService = &userService{}
-
-type userService struct {
-	UserDB
-}
-
-type userValidator struct {
-	UserDB
-}
-
-type User struct {
-	gorm.Model
-	Name			string
-	Email			string `gorm:"not null;unique_index"`
-	Password		string `gorm:"-"`
-	PasswordHash	string `gorm:"not null"`
-	Remember		string `gorm:"-"`
-	RememberHash	string `gorm:"not null;unique_index"`
-}
 
 type UserDB interface {
 	// Methods for querying single users
@@ -70,6 +44,16 @@ type UserDB interface {
 	DestructiveReset() error
 }
 
+type User struct {
+	gorm.Model
+	Name			string
+	Email			string `gorm:"not null;unique_index"`
+	Password		string `gorm:"-"`
+	PasswordHash	string `gorm:"not null"`
+	Remember		string `gorm:"-"`
+	RememberHash	string `gorm:"not null;unique_index"`
+}
+
 type UserService interface {
 	Authenticate(email, password string) (*User, error)
 	UserDB
@@ -81,11 +65,33 @@ func NewUserService(connectionInfo string) (UserService, error) {
 		return nil, err
 	}
 
+	hmac := hash.NewHMAC(hmacSecretKey)
+
+	uv := &userValidator{
+		hmac:  hmac,
+		UserDB: ug,
+	}
+
 	return &userService{
-		UserDB: userValidator{
-			UserDB: ug,
-		},
+		UserDB: uv,
 	}, nil
+}
+
+type userGorm struct {
+	db 		*gorm.DB
+	hmac 	hash.HMAC
+}
+
+var _ UserDB = &userGorm{}
+var _ UserService = &userService{}
+
+type userService struct {
+	UserDB
+}
+
+type userValidator struct {
+	UserDB
+	hmac hash.HMAC
 }
 
 func newUserGorm(connectionInfo string) (*userGorm, error) {
@@ -129,14 +135,19 @@ func (ug *userGorm) ByEmail(email string) (*User, error) {
 // ByRemember looks up a user with the given remember token and returns that user.
 // This method will handle hashing the token
 // Errors are the same as ByEmail
-func (ug *userGorm) ByRemember(token string) (*User, error) {
+func (ug *userGorm) ByRemember(rememberHash string) (*User, error) {
 	var user User
-	rememberHash := ug.hmac.Hash(token)
 	err := first(ug.db.Where("remember_hash = ?", rememberHash), &user)
 	if err != nil {
 		return nil, err
 	}
+
 	return &user, nil
+}
+
+func (uv *userValidator) ByRemember(token string) (*User, error) {
+	rememberHash := uv.hmac.Hash(token)
+	return uv.UserDB.ByRemember(rememberHash)
 }
 
 // Update will update the provided user with all of the data in the provided user object
