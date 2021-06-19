@@ -34,7 +34,26 @@ type LoginForm struct {
 }
 
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
-	if err := u.NewView.Render(w, nil); err != nil {
+	type Alert struct {
+		Level	string
+		Message	string
+	}
+	type Data struct {
+		Alert *Alert
+		Yield interface{}
+	}
+
+	alert := Alert{
+		Level: "success",
+		Message: "This is a dynamic alert",
+	}
+
+	data := Data{
+		Alert: &alert,
+		Yield: "this can be any data b/c it's type is interface",
+	}
+
+	if err := u.NewView.Render(w, data); err != nil {
 		panic(err)
 	}
 }
@@ -83,7 +102,7 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case models.ErrNotFound:
 			fmt.Fprintln(w, "Invalid email address")
-		case models.ErrInvalidPassword:
+		case models.ErrPasswordIncorrect:
 			fmt.Fprintln(w, "Invalid password provided")
 		default:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
