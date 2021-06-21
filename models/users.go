@@ -3,7 +3,6 @@ package models
 import (
 	"ecommerce/hash"
 	"ecommerce/rand"
-	"errors"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"golang.org/x/crypto/bcrypt"
@@ -19,27 +18,41 @@ const (
 
 var (
 	// ErrNotFound is returned when a resouece cannot be found in the database
-	ErrNotFound = errors.New("models: resource not found")
+	ErrNotFound modelError = "models: resource not found"
 
 	// ErrIdInvalid is returned when an invalid ID is provided to a method like Delete
-	ErrIdInvalid = errors.New("models: ID provided was invalid")
+	ErrIdInvalid modelError = "models: ID provided was invalid"
 
 	// ErrPasswordIncorrect is returned when an invalid password is used when attempting to authenticate a user
-	ErrPasswordIncorrect = errors.New("models: incorrect password provided")
+	ErrPasswordIncorrect modelError = "models: incorrect password provided"
 
 	// ErrEmailRequired is returned when a username is not provided when creating a user
-	ErrEmailRequired = errors.New("models: username is required")
+	ErrEmailRequired modelError = "models: username is required"
 
 	// ErrEmailTaken is returned when a username already exists on database
-	ErrEmailTaken = errors.New("models: email address is already taken")
+	ErrEmailTaken modelError = "models: email address is already taken"
 
 	// ErrPasswordTooShort is returned when a user tries to set a password that is lower
 	// than passwordMinLength const
-	ErrPasswordTooShort = errors.New("models: password is too short")
+	ErrPasswordTooShort modelError = "models: password is too short"
 
 	// ErrPasswordRequired is returned when a Create is attempted without a user password
-	ErrPasswordRequired = errors.New("models: password is required")
+	ErrPasswordRequired modelError = "models: password is required"
 )
+
+// Public and Error wrap errors for display on the frontend
+type modelError string
+
+func (e modelError) Error() string {
+	return string(e)
+}
+
+func (e modelError) Public() string {
+	s := strings.Replace(string(e), "models: ", "", 1)
+	split := strings.Split(s, " ")
+	split[0] = strings.Title(split[0])
+	return strings.Join(split, " ")
+}
 
 type UserDB interface {
 	// Methods for querying single users
@@ -188,7 +201,10 @@ func (ug *userGorm) Update(user *User) error {
 }
 func (uv *userValidator) Update(user *User) error {
 	if err := runUserValFns(user,
+		uv.passwordRequired,
+		uv.passwordMinLength,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
 		uv.hmacRemember,
 		uv.normalizeEmail,
 		uv.requireEmail,
@@ -205,7 +221,10 @@ func (ug *userGorm) Create(user *User) error {
 }
 func (uv *userValidator) Create(user *User) error {
 	err := runUserValFns(user,
+		uv.passwordRequired,
+		uv.passwordMinLength,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
 		uv.setRememberIfUnset,
 		uv.hmacRemember,
 		uv.normalizeEmail,
@@ -390,12 +409,12 @@ func (uv *userValidator) emailIsAvailable(user *User) error {
 	return nil
 }
 
-// passwordMinLength will make sure password meets minimun length
+// passwordMinLength will make sure password meets minimum length
 func (uv *userValidator) passwordMinLength(user *User) error {
 	if user.Password == "" {
 		return nil
 	}
-	if len(user.Password) < passwordMinLength {
+	if len(user.Password) < 4 {
 		return ErrPasswordTooShort
 	}
 
