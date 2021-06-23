@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	host	 = "localhost"
-	port	 = 5432
-	user	 = "postgres"
+	host     = "localhost"
+	port     = 5432
+	user     = "postgres"
 	password = "postgres"
-	dbname	 = "ecommerce_dev"
+	dbname   = "ecommerce_dev"
 )
 
 func must(err error) {
@@ -27,29 +27,26 @@ func main() {
 
 	// DB connection
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-	us, err := models.NewUserService(psqlInfo)
+	services, err := models.NewServices(psqlInfo)
 	if err != nil {
 		panic(err)
 	}
-	defer us.Close()
-	us.AutoMigrate()
+	defer services.Close()
+	services.AutoMigrate()
 
 	// uncomment if DB wipe is needed
-	//us.DestructiveReset()
+	//services.DestructiveReset()
 
 	// static pages handler
 	staticController := controllers.NewStatic()
 
 	// users handler
-	usersController := controllers.NewUsers(us)
+	usersController := controllers.NewUsers(services.User)
 
 	r := mux.NewRouter()
 
 	// HOME
 	r.Handle("/", staticController.HomeView).Methods("GET")
-
-	// CONTACT
-	r.Handle("/contact", staticController.ContactView).Methods("GET")
 
 	// SIGNUP
 	r.HandleFunc("/signup", usersController.New).Methods("GET")

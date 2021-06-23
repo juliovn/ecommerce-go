@@ -11,7 +11,7 @@ import (
 
 const (
 	hmacSecretKey = "6hMXiDnQoH8Ec7KQ"
-	userPwPepper = "6J53aQog5tQPaJPT"
+	userPwPepper  = "6J53aQog5tQPaJPT"
 
 	passwordMinLength = 4
 )
@@ -64,27 +64,20 @@ type UserDB interface {
 	Create(user *User) error
 	Update(user *User) error
 	Delete(id uint) error
-
-	// Used to close a DB connection
-	Close() error
-
-	// Migration helpers
-	AutoMigrate() error
-	DestructiveReset() error
 }
 
 type User struct {
 	gorm.Model
-	Name			string
-	Email			string `gorm:"not null;unique_index"`
-	Password		string `gorm:"-"`
-	PasswordHash	string `gorm:"not null"`
-	Remember		string `gorm:"-"`
-	RememberHash	string `gorm:"not null;unique_index"`
+	Name         string
+	Email        string `gorm:"not null;unique_index"`
+	Password     string `gorm:"-"`
+	PasswordHash string `gorm:"not null"`
+	Remember     string `gorm:"-"`
+	RememberHash string `gorm:"not null;unique_index"`
 }
 
 type userGorm struct {
-	db 		*gorm.DB
+	db *gorm.DB
 }
 
 var _ UserDB = &userGorm{}
@@ -106,33 +99,20 @@ type UserService interface {
 	UserDB
 }
 
-func NewUserService(connectionInfo string) (UserService, error) {
-	ug, err := newUserGorm(connectionInfo)
-	if err != nil {
-		return nil, err
-	}
-
+func NewUserService(db *gorm.DB) UserService {
+	ug := &userGorm{db}
 	hmac := hash.NewHMAC(hmacSecretKey)
-
-	uv := &userValidator{
-		hmac:  hmac,
-		UserDB: ug,
-	}
-
+	uv := newUserValidator(ug, hmac)
 	return &userService{
 		UserDB: uv,
-	}, nil
+	}
 }
 
-func newUserGorm(connectionInfo string) (*userGorm, error) {
-	db, err := gorm.Open("postgres", connectionInfo)
-	if err != nil {
-		return nil, err
+func newUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
+	return &userValidator{
+		UserDB: udb,
+		hmac:   hmac,
 	}
-	db.LogMode(true)
-	return &userGorm{
-		db:	db,
-	}, nil
 }
 
 // ByID will look up a user with the provided ID
@@ -200,15 +180,15 @@ func (ug *userGorm) Update(user *User) error {
 	return ug.db.Save(user).Error
 }
 func (uv *userValidator) Update(user *User) error {
-	if err := runUserValFns(user,
-		uv.passwordRequired,
+	err := runUserValFns(user,
 		uv.passwordMinLength,
 		uv.bcryptPassword,
 		uv.passwordHashRequired,
 		uv.hmacRemember,
 		uv.normalizeEmail,
 		uv.requireEmail,
-		uv.emailIsAvailable); err != nil {
+		uv.emailIsAvailable)
+	if err != nil {
 		return err
 	}
 
@@ -239,7 +219,7 @@ func (uv *userValidator) Create(user *User) error {
 
 // Delete will delete the user with the provided ID
 func (ug *userGorm) Delete(id uint) error {
-	user := User{Model: gorm.Model{ID:id}}
+	user := User{Model: gorm.Model{ID: id}}
 	return ug.db.Delete(&user).Error
 }
 func (uv *userValidator) Delete(id uint) error {
@@ -251,29 +231,6 @@ func (uv *userValidator) Delete(id uint) error {
 	}
 
 	return uv.UserDB.Delete(id)
-}
-
-// DestructiveReset drops the user table and rebuilds it
-func (ug *userGorm) DestructiveReset() error {
-	err := ug.db.DropTableIfExists(&User{}).Error
-	if err != nil {
-		return err
-	}
-	return ug.AutoMigrate()
-}
-
-// AutoMigrate will attempt to automatically migrate the users table
-func (ug *userGorm) AutoMigrate() error {
-	if err := ug.db.AutoMigrate(&User{}).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-
-// Closes the UserService database connection
-func (ug *userGorm) Close() error {
-	return ug.db.Close()
 }
 
 // Authenticate can be used to authenticate a user with the provided username and password
@@ -289,7 +246,7 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 
 	err = bcrypt.CompareHashAndPassword(
 		[]byte(foundUser.PasswordHash),
-		[]byte(password + userPwPepper))
+		[]byte(password+userPwPepper))
 
 	switch err {
 	case nil:
@@ -304,7 +261,7 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 // first will query using the provided gorm.DB and it will get the first
 // item returned and place it into dst. if nothing is found in the query
 // it will return ErrNotFound
-func first (db *gorm.DB, dst interface{}) error {
+func first(db *gorm.DB, dst interface{}) error {
 	err := db.First(dst).Error
 	if err == gorm.ErrRecordNotFound {
 		return ErrNotFound
@@ -436,6 +393,3 @@ func (uv *userValidator) passwordHashRequired(user *User) error {
 	}
 	return nil
 }
-
-
-
