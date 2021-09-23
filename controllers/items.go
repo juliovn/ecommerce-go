@@ -9,8 +9,9 @@ import (
 )
 
 type Items struct {
-	New 	*views.View
-	is		models.ItemService
+	New 		*views.View
+	ShowView	*views.View
+	is			models.ItemService
 }
 
 type ItemForm struct {
@@ -21,8 +22,9 @@ type ItemForm struct {
 
 func NewItems(is models.ItemService) *Items {
 	return &Items{
-		New:    views.NewView("base", "items/new"),
-		is: 	is,
+		New:    	views.NewView("base", "items/new"),
+		ShowView: 	views.NewView("base", "items/show"),
+		is: 		is,
 	}
 }
 
