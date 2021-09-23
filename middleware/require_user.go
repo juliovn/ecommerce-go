@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"ecommerce/models"
-	"fmt"
 	"net/http"
+	"ecommerce/context"
 )
 
 type RequireUser struct {
@@ -28,7 +28,10 @@ func (mw *RequireUser) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 			http.Redirect(w, r, "/login", http.StatusFound)
 		}
 
-		fmt.Println("User found:", user)
+		ctx := r.Context()
+		ctx = context.WithUser(ctx, user)
+		r = r.WithContext(ctx)
+
 		next(w, r)
 	})
 }

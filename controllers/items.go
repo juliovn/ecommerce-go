@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"ecommerce/context"
 	"ecommerce/models"
 	"ecommerce/views"
 	"fmt"
@@ -35,10 +36,13 @@ func (i *Items) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user := context.User(r.Context())
+
 	item := models.Item{
 		Name: form.Name,
 		Description: form.Description,
 		Price: form.Price,
+		UserID: user.ID,
 	}
 
 	if err := i.is.Create(&item); err != nil {
