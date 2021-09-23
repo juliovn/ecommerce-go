@@ -2,6 +2,7 @@ package main
 
 import (
 	"ecommerce/controllers"
+	"ecommerce/middleware"
 	"ecommerce/models"
 	"fmt"
 	"net/http"
@@ -46,6 +47,11 @@ func main() {
 	// items handler
 	itemsController := controllers.NewItems(services.Item)
 
+	// middleware
+	requireUserMw := middleware.RequireUser{
+		UserService: services.User,
+	}
+
 	r := mux.NewRouter()
 
 	// HOME
@@ -60,8 +66,10 @@ func main() {
 	r.HandleFunc("/login", usersController.Login).Methods("POST")
 
 	// ITEMS
-	r.Handle("/items/new", itemsController.New).Methods("GET")
-	r.HandleFunc("/items", itemsController.Create).Methods("POST")
+	newItem := requireUserMw.Apply(itemsController.New)
+	r.Handle("/items/new", newItem).Methods("GET")
+	createItem := requireUserMw.ApplyFn(itemsController.Create)
+	r.HandleFunc("/items", createItem).Methods("POST")
 
 	// COOKIE TEST
 	r.HandleFunc("/cookietest", usersController.CookieTest).Methods("GET")
