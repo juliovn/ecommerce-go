@@ -43,6 +43,9 @@ func main() {
 	// users handler
 	usersController := controllers.NewUsers(services.User)
 
+	// items handler
+	itemsController := controllers.NewItems(services.Item)
+
 	r := mux.NewRouter()
 
 	// HOME
@@ -55,6 +58,9 @@ func main() {
 	// LOGIN
 	r.Handle("/login", usersController.LoginView).Methods("GET")
 	r.HandleFunc("/login", usersController.Login).Methods("POST")
+
+	// ITEMS
+	r.Handle("/items/new", itemsController.New).Methods("GET")
 
 	// COOKIE TEST
 	r.HandleFunc("/cookietest", usersController.CookieTest).Methods("GET")
