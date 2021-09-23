@@ -20,7 +20,7 @@ func NewServices(connectionInfo string) (*Services, error) {
 	// construct services
 	return &Services{
 		User: NewUserService(db),
-		Item: &itemGorm{},
+		Item: NewItemService(db),
 		db:   db,
 	}, nil
 }
