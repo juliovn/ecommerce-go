@@ -61,6 +61,7 @@ func main() {
 
 	// ITEMS
 	r.Handle("/items/new", itemsController.New).Methods("GET")
+	r.HandleFunc("/items", itemsController.Create).Methods("POST")
 
 	// COOKIE TEST
 	r.HandleFunc("/cookietest", usersController.CookieTest).Methods("GET")
