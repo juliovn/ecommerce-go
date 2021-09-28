@@ -38,6 +38,8 @@ func main() {
 	// uncomment if DB wipe is needed
 	//services.DestructiveReset()
 
+	r := mux.NewRouter()
+
 	// static pages handler
 	staticController := controllers.NewStatic()
 
@@ -45,14 +47,12 @@ func main() {
 	usersController := controllers.NewUsers(services.User)
 
 	// items handler
-	itemsController := controllers.NewItems(services.Item)
+	itemsController := controllers.NewItems(services.Item, r)
 
 	// middleware
 	requireUserMw := middleware.RequireUser{
 		UserService: services.User,
 	}
-
-	r := mux.NewRouter()
 
 	// HOME
 	r.Handle("/", staticController.HomeView).Methods("GET")
@@ -71,7 +71,7 @@ func main() {
 	createItem := requireUserMw.ApplyFn(itemsController.Create)
 	r.HandleFunc("/items", createItem).Methods("POST")
 	showItem := requireUserMw.ApplyFn(itemsController.Show)
-	r.HandleFunc("/items/{id:[0-9]+}", showItem).Methods("GET")
+	r.HandleFunc("/items/{id:[0-9]+}", showItem).Methods("GET").Name(controllers.ShowItem)
 
 	// COOKIE TEST
 	r.HandleFunc("/cookietest", usersController.CookieTest).Methods("GET")

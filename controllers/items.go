@@ -4,16 +4,20 @@ import (
 	"ecommerce/context"
 	"ecommerce/models"
 	"ecommerce/views"
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
+)
+
+const (
+	ShowItem = "show_item"
 )
 
 type Items struct {
 	New 		*views.View
 	ShowView	*views.View
 	is			models.ItemService
+	r			*mux.Router
 }
 
 type ItemForm struct {
@@ -22,11 +26,12 @@ type ItemForm struct {
 	Price		string `schema:"price"`
 }
 
-func NewItems(is models.ItemService) *Items {
+func NewItems(is models.ItemService, r *mux.Router) *Items {
 	return &Items{
 		New:    	views.NewView("base", "items/new"),
 		ShowView: 	views.NewView("base", "items/show"),
 		is: 		is,
+		r: 			r,
 	}
 }
 
@@ -54,7 +59,15 @@ func (i *Items) Create(w http.ResponseWriter, r *http.Request) {
 		i.New.Render(w, vd)
 		return
 	}
-	fmt.Fprintln(w, item)
+
+
+	url, err := i.r.Get(ShowItem).URL("id", strconv.Itoa(int(item.ID)))
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	http.Redirect(w, r, url.Path, http.StatusFound)
 }
 
 // GET /items/:id
