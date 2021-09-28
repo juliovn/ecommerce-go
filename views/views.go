@@ -33,7 +33,7 @@ func (v *View) Render(w http.ResponseWriter, data interface{}) {
 	var buf bytes.Buffer
 	err := v.Template.ExecuteTemplate(&buf, v.Layout, data)
 	if err != nil {
-		http.Error(w, "Something went wrong...", http.StatusInternalServerError)
+		http.Error(w, "Something went wrong with the Template execution", http.StatusInternalServerError)
 		return
 	}
 

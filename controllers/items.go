@@ -5,7 +5,9 @@ import (
 	"ecommerce/models"
 	"ecommerce/views"
 	"fmt"
+	"github.com/gorilla/mux"
 	"net/http"
+	"strconv"
 )
 
 type Items struct {
@@ -54,3 +56,31 @@ func (i *Items) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintln(w, item)
 }
+
+// GET /items/:id
+func (i *Items) Show(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid item ID", http.StatusNotFound)
+		return
+	}
+
+	item, err := i.is.ByID(uint(id))
+	if err != nil {
+		switch err {
+		case models.ErrNotFound:
+			http.Error(w, "Item not found", http.StatusNotFound)
+			return
+		default:
+			http.Error(w, "Something wrong with ByID lookup", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	var vd views.Data
+	vd.Yield = item
+	i.ShowView.Render(w, vd)
+}
+

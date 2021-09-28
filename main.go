@@ -70,6 +70,8 @@ func main() {
 	r.Handle("/items/new", newItem).Methods("GET")
 	createItem := requireUserMw.ApplyFn(itemsController.Create)
 	r.HandleFunc("/items", createItem).Methods("POST")
+	showItem := requireUserMw.ApplyFn(itemsController.Show)
+	r.HandleFunc("/items/{id:[0-9]+}", showItem).Methods("GET")
 
 	// COOKIE TEST
 	r.HandleFunc("/cookietest", usersController.CookieTest).Methods("GET")

@@ -22,6 +22,7 @@ type ItemService interface {
 }
 
 type ItemDB interface {
+	ByID(id uint) (*Item, error)
 	Create(item *Item) error
 }
 
@@ -74,6 +75,16 @@ func (iv *itemValidator) Create(item *Item) error {
 	}
 
 	return iv.ItemDB.Create(item)
+}
+
+func (ig *itemGorm) ByID(id uint) (*Item, error) {
+	var item Item
+	db := ig.db.Where("id = ?", id)
+	err := first(db, &item)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
 }
 
 func (iv *itemValidator) userIDRequired(i *Item) error {
