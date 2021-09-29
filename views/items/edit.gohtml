@@ -32,4 +32,8 @@
 
         <button type="submit" class="btn btn-primary">Update</button>
     </form>
+
+    <form action="/items/{{.ID}}/delete" method="post">
+        <button type="submit" class="btn btn-danger">Delete</button>
+    </form>
 {{end}}

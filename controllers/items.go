@@ -4,6 +4,7 @@ import (
 	"ecommerce/context"
 	"ecommerce/models"
 	"ecommerce/views"
+	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
@@ -17,6 +18,7 @@ type Items struct {
 	New 		*views.View
 	ShowView	*views.View
 	EditView	*views.View
+	IndexView	*views.View
 	is			models.ItemService
 	r			*mux.Router
 }
@@ -32,6 +34,7 @@ func NewItems(is models.ItemService, r *mux.Router) *Items {
 		New:    	views.NewView("base", "items/new"),
 		ShowView: 	views.NewView("base", "items/show"),
 		EditView:	views.NewView("base", "items/edit"),
+		IndexView: 	views.NewView("base", "items/index"),
 		is: 		is,
 		r: 			r,
 	}
@@ -128,4 +131,80 @@ func (i *Items) itemByID(w http.ResponseWriter, r *http.Request) (*models.Item, 
 	}
 
 	return item, nil
+}
+
+// POST /items/:id/update
+func (i *Items) Update(w http.ResponseWriter, r *http.Request) {
+	item, err := i.itemByID(w, r)
+	if err != nil {
+		return
+	}
+
+	user := context.User(r.Context())
+	if item.UserID != user.ID {
+		http.Error(w, "Item not found", http.StatusNotFound)
+		return
+	}
+
+	var vd views.Data
+	vd.Yield = item
+	var form ItemForm
+	if err := parseForm(r, &form); err != nil {
+		vd.SetAlert(err)
+		i.EditView.Render(w, vd)
+		return
+	}
+
+	item.Name = form.Name
+	item.Price = form.Price
+	item.Description = form.Description
+	err = i.is.Update(item)
+	if err != nil {
+		vd.SetAlert(err)
+	} else {
+		vd.Alert = &views.Alert{
+			Level:   views.AlertLvlSuccess,
+			Message: "Item successfully updated",
+		}
+	}
+
+	i.EditView.Render(w, vd)
+}
+
+// POST /items/:id/delete
+func (i *Items) Delete(w http.ResponseWriter, r *http.Request) {
+	item, err := i.itemByID(w, r)
+	if err != nil {
+		return
+	}
+
+	user := context.User(r.Context())
+	if item.UserID != user.ID {
+		http.Error(w, "You don't have permissions to delete this item", http.StatusForbidden)
+		return
+	}
+
+	var vd views.Data
+	err = i.is.Delete(item.ID)
+	if err != nil {
+		vd.SetAlert(err)
+		vd.Yield = item
+		i.EditView.Render(w, vd)
+		return
+	}
+
+	fmt.Fprintln(w, "successfully deleted")
+}
+
+// GET /items
+func (i *Items) Index(w http.ResponseWriter, r *http.Request) {
+	user := context.User(r.Context())
+	items, err := i.is.ByUserID(user.ID)
+	if err != nil {
+		http.Error(w, "Something went wrong with ByUserID lookup", http.StatusInternalServerError)
+		return
+	}
+	var vd views.Data
+	vd.Yield = items
+	i.IndexView.Render(w, vd)
 }
